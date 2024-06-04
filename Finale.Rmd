@@ -1,0 +1,169 @@
+---
+title: "Impact tu taux de change sur l'économie haïtienne"
+author: "Stedline Zidor"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(dplyr)
+library(ggplot2)
+library(readxl)
+library(tidyverse)
+library(plotly)
+library(car)
+library(wbstats)
+library(broom)
+
+# Rechercher les indicateurs pour les variables d'intérêt
+indicateurs_taux_change <- wb_search(pattern = "exchange rate")
+indicateurs_croissance_pib <- wb_search(pattern = "GDP growth")
+indicateurs_recettes_touristiques <- wb_search(pattern = "tourism receipts")
+indicateurs_importations <- wb_search(pattern = "imports")
+indicateurs_exportations <- wb_search(pattern = "exports")
+indicateurs_production_agricole <- wb_search(pattern = "agricultural production")
+
+# Afficher les premiers résultats pour identifier les codes
+head(indicateurs_taux_change)
+head(indicateurs_croissance_pib)
+head(indicateurs_recettes_touristiques)
+head(indicateurs_importations)
+head(indicateurs_exportations)
+head(indicateurs_production_agricole)
+
+
+# Définir les codes des indicateurs sélectionnés
+code_taux_change <- "PA.NUS.FCRF"
+code_croissance_pib <- "NY.GDP.MKTP.KD.ZG"
+code_importations <- "NE.IMP.GNFS.KD.ZG"
+code_exportations <- "NE.EXP.GNFS.KD.ZG"
+code_production_agricole <- "AG.PRD.CROP.XD"
+
+# Télécharger les données pour Haïti (HTI) de 1989 à 2022
+data_haiti <- wb_data(indicator = c(code_taux_change, code_croissance_pib,
+                                    code_importations, code_exportations, code_production_agricole), 
+                      country = "HTI", start_date = 1989, end_date = 2021)
+head(data_haiti)
+View(data_haiti)  
+
+#Renommer les indicateurs
+data_haiti <- data_haiti %>%
+  rename(
+   Exportations = NE.EXP.GNFS.KD.ZG,
+   Importations = NE.IMP.GNFS.KD.ZG,
+   Croissance_PIB = NY.GDP.MKTP.KD.ZG,
+   Taux_de_change = PA.NUS.FCRF,
+   Production_agricole = AG.PRD.CROP.XD
+  )
+
+#Pour voir leurs nouveaux noms
+names(data_haiti)
+
+# Afficher les premières lignes des données
+head(data_haiti)
+view(data_haiti)
+
+
+
+
+```
+
+## Introdution
+Le taux de change occupe une place centrale dans l'économie haïtienne, influençant divers aspects de sa performance économique. En tant qu'indicateur clé, il joue un rôle crucial dans la détermination de la compétitivité des exportations, l'évolution des prix intérieurs et l'attrait des investissements étrangers. En Haïti, où une grande partie des biens de consommation est importée, les fluctuations du taux de change peuvent avoir un impact significatif sur le pouvoir d'achat des citoyens et l'inflation. Une devise locale faible peut stimuler les exportations, mais la volatilité du taux de change peut également poser des défis pour les entreprises dépendantes des importations. Ainsi, comprendre l'impact du taux de change sur l'économie haïtienne est essentiel pour formuler des politiques efficaces et favoriser une croissance économique durable.
+
+
+## Nuage de points avec droite de régression
+
+```{r}
+# Nuage de points pour chaque variable indépendante avec droite de régression
+plot_list <- list(
+  ggplot(data_haiti, aes(x = Croissance_PIB, y = Taux_de_change)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE, color = "blue") +
+    labs(title = "Taux de change vs Croissance du PIB", x = "Croissance du PIB (%)", y = "Taux de change"),
+
+  ggplot(data_haiti, aes(x = Importations, y = Taux_de_change)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE, color = "brown") +
+    labs(title = "Taux de change vs Importations", x = "Importations (USD)", y = "Taux de change"),
+
+  ggplot(data_haiti, aes(x = Exportations, y = Taux_de_change)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE, color = "red") +
+    labs(title = "Taux de change vs Exportations", x = "Exportations (USD)", y = "Taux de change"),
+
+  ggplot(data_haiti, aes(x = Production_agricole, y = Taux_de_change)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE, color = "yellow") +
+    labs(title = "Taux de change vs Production agricole", x = "Production agricole (USD)", y = "Taux de change")
+)
+
+# Afficher les graphiques
+for (plot in plot_list) 
+print(plot)
+
+```
+
+
+
+
+
+```{r include=FALSE}
+
+# Modèle et Résultats
+model <- lm(Taux_de_change ~ Croissance_PIB + Importations + Exportations + Production_agricole, data = data_haiti)
+summary(model)
+
+# Créer un tableau récapitulatif des résultats de la régression
+regression_table <- tidy(model) %>%
+  mutate(p.value = round(p.value, 3))
+
+# Extraire les coefficients et les statistiques de votre modèle de régression
+regression_summary <- broom::tidy(model)
+
+ # Afficher le tableau récapitulatif
+regression_table
+regression_summary
+
+# Renommer les colonnes pour plus de clarté
+colnames(regression_summary) <- c("Variable", "Coefficient", "Error Standard", "t-value", "Pr(>|t|)", "R² ajusté", "Statistique de Fisher", "Probabilité Fisher")
+
+```
+
+### Tableau du modèle de Régression 
+```{r}
+
+
+# Ajouter R² ajusté, statistique de Fisher et sa probabilité
+regression_summary<- regression_summary %>%
+ mutate(adj_r_squared = glance(model)$adj.r.squared,
+         statistic_fisher = glance(model)$statistic,
+         p_value_fisher = glance(model)$p.value)
+
+
+# Renommer les colonnes pour plus de clarté
+colnames(regression_summary) <- c("Variable", "Coefficient","terme d'erreur","t-value", "Probabilité", "R² ajusté", "Statistique de Fisher", "Probabilité Fisher")
+
+
+# Afficher le tableau
+knitr::kable(regression_summary, caption = "Résultats de la régression linéaire multiple")
+```
+
+## Réalisons un graphique en nuage de points, mettant en lien les valeurs résiduelles de la régression et les valeurs estimées.
+```{r residuals-plot, fig.height=5, fig.width=7}
+# Calcul des valeurs ajustées et des résidus
+data_haiti <- data_haiti %>%
+  mutate(
+    fitted_values = fitted(model),
+    residuals = resid(model)
+  )
+# Graphique des résidus vs valeurs ajustées
+ggplot(data_haiti, aes(x = fitted_values, y = residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(title = "Résidus vs Valeurs ajustées", x = "Valeurs ajustées", y = "Résidus") +
+  theme_minimal()
+```
+
+Ce graphique des résidus vs valeurs ajustées permet d'évaluer la qualité du modèle de régression linéaire.Nous pouvons constater ici une dispersion uniforme des résidus autour de zéro, ce qui indique une forte ou bonne adéquation du modèle.
