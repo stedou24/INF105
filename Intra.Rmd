@@ -1,0 +1,122 @@
+---
+title: "Tableau de données sur la BRH"
+author: "by Stedline Zidor"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(rvest)
+library(xml2)
+library(shiny)
+library(tidyverse)
+library(plotly)
+library(DT)
+library(dplyr)
+
+# URL des pages
+url1 <- "https://www.brh.ht/taux-du-jour/"
+url2 <- "https://www.brh.ht/taux-affiches-par-les-banques-et-les-agents-de-change-2/"
+
+# Lire le contenu HTML des pages
+page1 <- read_html(url1)
+page2 <- read_html(url2)
+
+# Extraire les données des deux tableau
+data_table1 <- html_table(html_nodes(page1, "table")[[1]])
+data_table1<-data_table1[c(1,2,4,5,6,8,9,10,11,12,14,15,17,18,19),]
+
+data_table2 <- html_table(html_nodes(page2, "table")[[1]])
+data_table2 <- data_table2[-8,-2]
+data_table22 <- data_table2[-c(8,9,10),]
+# Si nécessaire, nettoyer et formater les données
+# Par exemple, vous pouvez renommer les colonnes
+colnames(data_table1) <- c("Infos", "Achat", "Vente", "Spread")
+colnames(data_table2)<- c("Banque","Achat","Vente","Spread")
+colnames(data_table22)<- c("Banque","Achat","Vente","Spread")
+
+# Afficher les données extraites
+print(data_table1)
+print(data_table2)
+print(data_table22)
+# Grouper les données par banque, puis par infos 
+group1<- data_table1 %>%
+  group_by(Infos)
+group2<- data_table2 %>%
+  group_by(Banque)
+group3<- data_table22 %>%
+  group_by(Banque)
+```
+
+TAUX DE CHANGE {data-vertical_layout=fill}
+=============================================
+
+## Column {data-width=220}
+
+### Taux de change par banque
+
+```{r}
+
+renderDT({
+  datatable(group2, options = list(pageLength = 10))
+})
+```
+
+## Column {data-width=300}
+
+### Achat par Banque
+
+```{r}
+output$plot1 <- renderPlotly({
+  plot_ly(group3, x = ~Banque, y = ~Achat, type = 'bar', name = 'Achat',color = ~Banque, colors = "Set3") %>%
+    layout(title = 'Achat par Banque',
+           xaxis = list(title = 'Banque'),
+           yaxis = list(title = 'Achat (HTG)'))
+})
+
+plotlyOutput("plot1")
+```
+
+### Vente par Banque
+
+```{r}
+output$plot2 <- renderPlotly({
+  plot_ly(group3, x = ~Banque, y = ~Vente, type = 'bar', name = 'Vente',color = ~Banque, colors = "Set3") %>%
+    layout(title = 'Vente par Banque',
+           xaxis = list(title = 'Banque'),
+           yaxis = list(title = 'Vente (HTG)'))
+})
+
+plotlyOutput("plot2")
+```
+
+### Spread par Banque
+
+```{r}
+output$plot3 <- renderPlotly({
+  plot_ly(group3, x = ~Banque, y = ~Spread, type = 'bar', name = 'Spread',color = ~Banque, colors = "Set3") %>%
+    layout(title = 'Spread par Banque',
+           xaxis = list(title = 'Banque'),
+           yaxis = list(title = 'Spread (HTG)'))
+})
+
+plotlyOutput("plot3")
+```
+
+Taux et variation{data-vertical_layout=scroll}
+=====================================
+
+## Column {data-vertival_layout=scroll}
+
+### Taux de change de marché
+```{r}
+
+renderDT({
+  datatable(group1, options = list(pageLength = 15))
+})
+```
+
