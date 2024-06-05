@@ -1,0 +1,65 @@
+---
+title: "Devoir Crédit Bancaire"
+author: "Stedline Zidor"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(googlesheets4)
+library(tidyverse)
+
+# Indiquer le lien vers votre feuille Google Sheets
+credit_bancaire <- "https://docs.google.com/spreadsheets/d/1skBprN-J7mKuhaMcQ0po3EpK9xcDQ6c4wfG_RufCPs8/edit#gid=1696795475"
+
+# Importer les données depuis Google Sheets
+data_credit <- read_sheet(credit_bancaire)
+
+#R ou Google spreadsheets x Tidyverse API refuse de me donner l'accès, je le sauvegarde dans un objet
+
+ # Importer les données depuis le fichier creeditbancaire.csv
+credit_bancaire2 <- read_csv("C:/Users/OMEN PC/Downloads/CreditBancaire.csv")
+
+# Sauvegarder le dataframe data_credit dans un fichier CSV
+write.csv(data_credit, "data_credit.csv", row.names = FALSE)
+
+# Régression du nombre de jours de retards sur les variables Credit et Type
+modele_reg <- lm(Jours ~ Credit + Type, data = credit_bancaire2)
+
+# Afficher les résultats détaillés de la régression
+summary(modele_reg)
+
+# Afficher uniquement le tableau des coefficients
+coef(summary(modele_reg))
+
+# Afficher uniquement les coefficients estimés et les valeurs de la statistique de Student
+coef(summary(modele_reg))[, c("Estimate", "t value")]
+
+# Graphique en nuage de points avec droite de régression
+ggplot(data_credit, aes(x = Credit, y = Jours)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Nuage de points avec droite de régression", x = "Crédit", y = "Nombre de jours de retards")
+
+# Création du dataframe avec deux variables x et y
+data <- data.frame(
+  x = c(1, 2, 3, 4, 5), 
+  y = c(2, 4, 6, 8, 10) 
+)
+# Affichage du dataframe
+print(data)
+
+# Fonction pour régresser une variable y sur une variable x
+regression_function <- function(data, y, x) {
+  modele <- lm(data[[y]] ~ data[[x]], data = data)
+  coefficients <- coef(summary(modele))[, "Estimate"]
+  t_values <- coef(summary(modele))[, "t value"]
+  results <- data.frame(Coefficient = coefficients, t_value = t_values)
+  return(results)
+}
+
+
+```
+
