@@ -1,0 +1,67 @@
+---
+title: "Coupe du monde"
+author: "Stedline Zidor"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(rvest)
+library(dplyr)
+library(ggplot2)
+
+# URL de la page web
+url <- "https://www.skysports.com/world-cup-table"
+
+# Lire la page web
+webpage <- read_html(url)
+
+# Extraire tous les tableaux de la page web
+tables <- html_nodes(webpage, "table")
+
+# Calculer le nombre de tableaux
+num_tables <- length(tables)
+print(paste("Nombre de tableaux dans la page web :", num_tables))
+
+# Fonction pour lire la page web et compiler les tableaux en un seul data frame
+compile_tables <- function(url) {
+  # Lire la page web
+  webpage <- read_html(url)
+  
+  # Extraire tous les tableaux de la page web
+  tables <- html_nodes(webpage, "table")
+  
+  # Lire les tableaux et les combiner en un seul data frame
+  all_tables <- lapply(tables, html_table, fill = TRUE)
+  combined_table <- bind_rows(all_tables)
+  
+  return(combined_table)
+}
+
+# Utiliser la fonction pour compiler les tableaux
+compiled_data <- compile_tables(url)
+
+# Nettoyer et préparer les données
+compiled_data_clean <- compiled_data %>%
+  mutate(Pts = as.numeric(Pts)) %>%
+  arrange(desc(Pts)) %>%
+  head(10)
+
+# Vérifier les données nettoyées
+print(compiled_data_clean)
+
+# Créer un graphique en bâton avec les 10 équipes ayant le nombre de points le plus élevé
+ggplot(compiled_data_clean, aes(x = reorder(Team, Pts), y = Pts)) +
+  geom_bar(stat = "identity", fill = "brown") +
+  coord_flip() +
+  labs(title = "Top 10 équipes avec le nombre de points le plus élevé",
+       x = "Équipe",
+       y = "Points") +
+  theme_minimal()
+```
+
+
+
+
